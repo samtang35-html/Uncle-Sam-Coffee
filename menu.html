@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uncle Sam Coffee Menu</title>
+    <style>
+        :root { --coffee-dark: #3E2723; --coffee-light: #6F4E37; --accent: #D4A373; --bg: #FAFAFA; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        header { text-align: center; padding: 30px 0; }
+        h1 { color: var(--coffee-dark); margin: 0; letter-spacing: 2px; font-size: 24px; }
+        .subtitle { color: var(--coffee-light); font-size: 14px; margin-top: 5px; }
+        
+        /* 管理輸入區 */
+        #admin-panel { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 30px; border: 1px dashed #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .bean-card { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; }
+        .bean-img { width: 100%; height: 220px; object-fit: cover; background: #eee; }
+        .bean-info { padding: 15px; }
+        .bean-origin { font-size: 12px; color: var(--accent); font-weight: bold; }
+        .bean-name { font-size: 18px; font-weight: bold; margin: 5px 0; color: var(--coffee-dark); }
+        .bean-flavor { font-size: 13px; color: #666; margin-bottom: 12px; min-height: 36px; }
+        .bean-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 12px; }
+        .price { font-size: 18px; font-weight: bold; color: var(--coffee-light); }
+        .buy-info { font-size: 12px; color: #888; border: 1px solid #ddd; padding: 4px 10px; border-radius: 15px; }
+        
+        .btn-del { position: absolute; top: 10px; right: 10px; background: rgba(231, 76, 60, 0.8); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        input, button.add-btn { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button.add-btn { background: var(--coffee-light); color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>UNCLE SAM ROASTER</h1>
+        <div class="subtitle">Coffee Bean Menu</div>
+    </header>
+
+    <div id="admin-panel">
+        <h3 style="margin-top:0">新增咖啡豆</h3>
+        <input type="file" id="imgInput" accept="image/*">
+        <input type="text" id="origin" placeholder="產地及處理法 (如: 埃塞俄比亞 日曬)">
+        <input type="text" id="name" placeholder="豆名 (如: 74158)">
+        <input type="text" id="flavor" placeholder="風味描述">
+        <input type="text" id="price" placeholder="價錢 (如: $120 / 200g)">
+        <button class="add-btn" onclick="addItem()">上傳到目錄</button>
+    </div>
+
+    <div class="menu-grid" id="menuGrid"></div>
+
+<script>
+    let menuItems = JSON.parse(localStorage.getItem('coffee_menu_public') || '[]');
+    let currentImgBase64 = "";
+
+    document.getElementById('imgInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onloadend = function() { currentImgBase64 = reader.result; }
+        if (file) reader.readAsDataURL(file);
+    });
+
+    function addItem() {
+        const item = {
+            id: Date.now(),
+            img: currentImgBase64,
+            origin: document.getElementById('origin').value,
+            name: document.getElementById('name').value,
+            price: document.getElementById('price').value,
+            flavor: document.getElementById('flavor').value
+        };
+        if(!item.name || !item.price) return alert("請填寫資料");
+        menuItems.unshift(item);
+        localStorage.setItem('coffee_menu_public', JSON.stringify(menuItems));
+        render();
+        document.querySelectorAll('#admin-panel input').forEach(i => i.value = "");
+        currentImgBase64 = "";
+    }
+
+    function deleteItem(id) {
+        if(confirm('確定刪除？')) {
+            menuItems = menuItems.filter(i => i.id !== id);
+            localStorage.setItem('coffee_menu_public', JSON.stringify(menuItems));
+            render();
+        }
+    }
+
+    function render() {
+        document.getElementById('menuGrid').innerHTML = menuItems.map(item => `
+            <div class="bean-card">
+                <button class="btn-del" onclick="deleteItem(${item.id})">刪除</button>
+                <img src="${item.img || 'https://via.placeholder.com/300x200?text=Uncle+Sam+Roaster'}" class="bean-img">
+                <div class="bean-info">
+                    <div class="bean-origin">${item.origin}</div>
+                    <div class="bean-name">${item.name}</div>
+                    <div class="bean-flavor">${item.flavor}</div>
+                    <div class="bean-bottom">
+                        <div class="price">${item.price}</div>
+                        <div class="buy-info">請聯絡我購買</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    render();
+</script>
+</body>
+</html>
