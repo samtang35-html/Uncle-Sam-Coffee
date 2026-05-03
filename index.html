@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Uncle Sam Roaster Log</title>
+    <style>
+        :root { --primary: #6F4E37; --bg: #F8F9FA; --edit: #3498db; --del: #e74c3c; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; font-size: 14px; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; }
+        .nav-item { flex: 1; text-align: center; padding: 15px 0; color: #888; cursor: pointer; }
+        .nav-item.active { color: var(--primary); font-weight: bold; border-top: 3px solid var(--primary); }
+        .tab-content { display: none; padding: 15px; }
+        .active-content { display: block; }
+        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .time-input { display: flex; align-items: center; gap: 4px; }
+        .time-input input { text-align: center; padding: 6px 2px; }
+        label { font-size: 11px; color: #666; font-weight: bold; margin-top: 5px; display: block; }
+        input, select { width: 100%; padding: 10px; margin: 4px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+        button.main-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; margin-top: 10px; font-size: 16px; }
+        .item-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid var(--primary); transition: all 0.3s; }
+        .item-main { cursor: pointer; }
+        .item-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .item-sub { color: #666; font-size: 13px; line-height: 1.5; }
+        .action-area { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #eee; gap: 10px; }
+        .action-area.show { display: flex; }
+        .btn-sm { flex: 1; padding: 10px; border-radius: 6px; border: none; color: white; font-size: 13px; font-weight: bold; cursor: pointer; }
+        .btn-edit { background: var(--edit); }
+        .btn-del { background: var(--del); }
+        .profit-tag { color: #2ecc71; font-weight: bold; }
+        .badge { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: normal; color: #555; }
+    </style>
+</head>
+<body>
+
+    <div id="tab-beans" class="tab-content active-content">
+        <h2>🌱 生豆庫存</h2>
+        <div class="card">
+            <input type="hidden" id="b_id">
+            <div class="grid">
+                <div><label>產地</label><input type="text" id="b_origin"></div>
+                <div><label>莊園</label><input type="text" id="b_estate"></div>
+                <div><label>處理方法</label><input type="text" id="b_process" placeholder="例如: 日曬, 水洗"></div>
+                <div><label>入貨日期</label><input type="date" id="b_date"></div>
+                <div style="grid-column: span 2;"><label>風味描述</label><input type="text" id="b_flavor"></div>
+                <div><label>成本 (HKD/kg)</label><input type="number" id="b_cost" oninput="calcExp()"></div>
+                <div><label>重量 (kg)</label><input type="number" id="b_weight" oninput="calcExp()"></div>
+                <div style="grid-column: span 2;"><label>總支出</label><input type="number" id="b_expense" readonly></div>
+            </div>
+            <button class="main-btn" onclick="saveBean()">儲存生豆資料</button>
+        </div>
+        <div id="beanList"></div>
+    </div>
+
+    <div id="tab-roast" class="tab-content">
+        <h2>🔥 烘焙紀錄</h2>
+        <div class="card">
+            <input type="hidden" id="r_id">
+            <div class="grid">
+                <div style="grid-column: span 2;"><label>選擇生豆</label><select id="r_beanSelect"></select></div>
+                <div><label>批次編號</label><input type="text" id="r_batchNo"></div>
+                <div><label>烘焙日期</label><input type="date" id="r_date"></div>
+                <div><label>入豆重 (g)</label><input type="number" id="r_wIn" value="150"></div>
+                <div><label>熟豆重 (g)</label><input type="number" id="r_wOut"></div>
+                <div><label>入豆溫 (℃)</label><input type="number" id="r_t_charge"></div>
+                <div><label>回溫點 (℃)</label><input type="number" id="r_t_tp"></div>
+                <div><label>轉黃 (℃ / 分:秒)</label>
+                    <div class="time-input"><input type="number" id="r_t_dry" placeholder="℃"><input type="number" id="r_m_dry" placeholder="分"><input type="number" id="r_s_dry" placeholder="秒"></div>
+                </div>
+                <div><label>一爆 (℃ / 分:秒)</label>
+                    <div class="time-input"><input type="number" id="r_t_fc" placeholder="℃"><input type="number" id="r_m_fc" placeholder="分"><input type="number" id="r_s_fc" placeholder="秒"></div>
+                </div>
+                <div><label>下豆 (℃ / 分:秒)</label>
+                    <div class="time-input"><input type="number" id="r_t_drop" placeholder="℃"><input type="number" id="r_m_drop" placeholder="分"><input type="number" id="r_s_drop" placeholder="秒"></div>
+                </div>
+                <div><label>發展 (分:秒)</label>
+                    <div class="time-input"><input type="number" id="r_m_dev" placeholder="分"><input type="number" id="r_s_dev" placeholder="秒"></div>
+                </div>
+            </div>
+            <button class="main-btn" onclick="saveRoast()">儲存烘焙紀錄</button>
+        </div>
+        <div id="roastList"></div>
+    </div>
+
+    <div id="tab-sales" class="tab-content">
+        <h2>💰 出貨紀錄</h2>
+        <div class="card">
+            <input type="hidden" id="s_id">
+            <label>選擇烘焙批次</label><select id="s_roastSelect" style="margin-bottom:10px;"></select>
+            <div class="grid">
+                <div><label>買家/對象</label><input type="text" id="s_buyer"></div>
+                <div><label>出貨日期</label><input type="date" id="s_date"></div>
+                <div><label>出貨重量 (g)</label><input type="number" id="s_weight"></div>
+                <div><label>售價 (HKD)</label><input type="number" id="s_price"></div>
+            </div>
+            <button class="main-btn" onclick="saveSale()">儲存出貨紀錄</button>
+        </div>
+        <div id="salesList"></div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item active" onclick="showTab('beans')">生豆</div>
+        <div class="nav-item" onclick="showTab('roast')">烘焙</div>
+        <div class="nav-item" onclick="showTab('sales')">出貨</div>
+    </div>
+
+<script>
+    let db = {
+        beans: JSON.parse(localStorage.getItem('coffee_beans') || '[]'),
+        roasts: JSON.parse(localStorage.getItem('coffee_roasts') || '[]'),
+        sales: JSON.parse(localStorage.getItem('coffee_sales') || '[]')
+    };
+
+    function showTab(name) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active-content'));
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active-content');
+        if(event) event.currentTarget.classList.add('active');
+        render();
+    }
+
+    function calcExp() {
+        const cost = document.getElementById('b_cost').value || 0;
+        const weight = document.getElementById('b_weight').value || 0;
+        document.getElementById('b_expense').value = (cost * weight).toFixed(1);
+    }
+
+    function saveBean() {
+        const id = document.getElementById('b_id').value || Date.now();
+        const data = {
+            id: parseInt(id),
+            origin: document.getElementById('b_origin').value,
+            estate: document.getElementById('b_estate').value,
+            process: document.getElementById('b_process').value,
+            flavor: document.getElementById('b_flavor').value,
+            cost: document.getElementById('b_cost').value,
+            weight: document.getElementById('b_weight').value,
+            expense: document.getElementById('b_expense').value,
+            date: document.getElementById('b_date').value
+        };
+        const idx = db.beans.findIndex(b => b.id == id);
+        if(idx > -1) db.beans[idx] = data; else db.beans.unshift(data);
+        localStorage.setItem('coffee_beans', JSON.stringify(db.beans));
+        location.reload();
+    }
+
+    function saveRoast() {
+        const id = document.getElementById('r_id').value || Date.now();
+        const bId = document.getElementById('r_beanSelect').value;
+        const bean = db.beans.find(b => b.id == bId);
+        const wIn = parseFloat(document.getElementById('r_wIn').value) || 1;
+        const wOut = parseFloat(document.getElementById('r_wOut').value) || 1;
+        
+        const mDrop = parseInt(document.getElementById('r_m_drop').value) || 0;
+        const sDrop = parseInt(document.getElementById('r_s_drop').value) || 0;
+        const mDev = parseInt(document.getElementById('r_m_dev').value) || 0;
+        const sDev = parseInt(document.getElementById('r_s_dev').value) || 0;
+        
+        const totalSec = (mDrop * 60) + sDrop;
+        const devSec = (mDev * 60) + sDev;
+        const devRatio = totalSec > 0 ? ((devSec / totalSec) * 100).toFixed(1) : 0;
+
+        const data = {
+            id: parseInt(id),
+            beanId: bId,
+            beanTitle: bean ? `${bean.origin} ${bean.estate}` : '未知',
+            batchNo: document.getElementById('r_batchNo').value,
+            date: document.getElementById('r_date').value,
+            wIn: wIn, wOut: wOut,
+            loss: ((wIn - wOut) / wIn * 100).toFixed(1),
+            t_charge: document.getElementById('r_t_charge').value,
+            t_tp: document.getElementById('r_t_tp').value,
+            t_dry: document.getElementById('r_t_dry').value, m_dry: document.getElementById('r_m_dry').value, s_dry: document.getElementById('r_s_dry').value,
+            t_fc: document.getElementById('r_t_fc').value, m_fc: document.getElementById('r_m_fc').value, s_fc: document.getElementById('r_s_fc').value,
+            t_drop: document.getElementById('r_t_drop').value, m_drop: mDrop, s_drop: sDrop,
+            m_dev: mDev, s_dev: sDev,
+            devRatio: devRatio,
+            costPerG: bean ? (bean.cost / 1000) : 0
+        };
+        const idx = db.roasts.findIndex(r => r.id == id);
+        if(idx > -1) db.roasts[idx] = data; else db.roasts.unshift(data);
+        localStorage.setItem('coffee_roasts', JSON.stringify(db.roasts));
+        location.reload();
+    }
+
+    function saveSale() {
+        const id = document.getElementById('s_id').value || Date.now();
+        const rId = document.getElementById('s_roastSelect').value;
+        const r = db.roasts.find(x => x.id == rId);
+        if(!r) return alert("請先選擇烘焙批次");
+        const w = document.getElementById('s_weight').value || 0;
+        const price = document.getElementById('s_price').value || 0;
+        const roastedCostPerG = r.costPerG / ((100 - r.loss) / 100);
+        const totalCost = (roastedCostPerG * w).toFixed(1);
+        const data = {
+            id: parseInt(id), roastId: rId, beanTitle: r.beanTitle, buyer: document.getElementById('s_buyer').value,
+            date: document.getElementById('s_date').value, weight: w, price: price, cost: totalCost, profit: (price - totalCost).toFixed(1)
+        };
+        const idx = db.sales.findIndex(s => s.id == id);
+        if(idx > -1) db.sales[idx] = data; else db.sales.unshift(data);
+        localStorage.setItem('coffee_sales', JSON.stringify(db.sales));
+        location.reload();
+    }
+
+    function toggleAction(id) {
+        document.querySelectorAll('.action-area').forEach(el => {
+            if(el.id !== 'action-' + id) el.classList.remove('show');
+        });
+        const target = document.getElementById('action-' + id);
+        if(target) target.classList.toggle('show');
+    }
+
+    function render() {
+        const beanOptions = db.beans.map(b => `<option value="${b.id}">${b.origin} ${b.estate} (${b.flavor})</option>`).join('');
+        document.getElementById('r_beanSelect').innerHTML = beanOptions;
+        document.getElementById('s_roastSelect').innerHTML = db.roasts.map(r => `<option value="${r.id}">[#${r.batchNo}] ${r.beanTitle}</option>`).join('');
+
+        document.getElementById('beanList').innerHTML = db.beans.map(b => `
+            <div class="item-card">
+                <div class="item-main" onclick="toggleAction('b${b.id}')">
+                    <div class="item-title">${b.origin} ${b.estate} <span class="badge">${b.process || ''}</span></div>
+                    <div class="item-sub">風味：${b.flavor}<br>支出：<b>$${b.expense}</b> ($${b.cost}/kg) | ${b.date}</div>
+                </div>
+                <div class="action-area" id="action-b${b.id}">
+                    <button class="btn-sm btn-edit" onclick="editBean(${b.id})">修改</button>
+                    <button class="btn-sm btn-del" onclick="del('beans', ${b.id})">刪除</button>
+                </div>
+            </div>`).join('');
+
+        document.getElementById('roastList').innerHTML = db.roasts.map(r => `
+            <div class="item-card">
+                <div class="item-main" onclick="toggleAction('r${r.id}')">
+                    <div class="item-title">#${r.batchNo} ${r.beanTitle} <span style="font-size:12px; color:var(--primary)">失重 ${r.loss}%</span></div>
+                    <div class="item-sub">日期：${r.date} | ${r.wIn}g -> ${r.wOut}g<br>
+                        回溫：${r.t_tp}℃ | 轉黃：${r.t_dry}℃ (${r.m_dry}:${r.s_dry})<br>
+                        一爆：${r.t_fc}℃ (${r.m_fc}:${r.s_fc}) | 下豆：${r.t_drop}℃ (${r.m_drop}:${r.s_drop})<br>
+                        發展時間：${r.m_dev || 0}分 ${r.s_dev || 0}秒 (<b>${r.devRatio || 0}%</b>)
+                    </div>
+                </div>
+                <div class="action-area" id="action-r${r.id}">
+                    <button class="btn-sm btn-edit" onclick="editRoast(${r.id})">修改</button>
+                    <button class="btn-sm btn-del" onclick="del('roasts', ${r.id})">刪除</button>
+                </div>
+            </div>`).join('');
+
+        document.getElementById('salesList').innerHTML = db.sales.map(s => `
+            <div class="item-card">
+                <div class="item-main" onclick="toggleAction('s${s.id}')">
+                    <div class="item-title">${s.buyer} <span class="profit-tag">+$${s.profit}</span></div>
+                    <div class="item-sub">${s.beanTitle}<br>售價：$${s.price} | 重量：${s.weight}g | 日期：${s.date}</div>
+                </div>
+                <div class="action-area" id="action-s${s.id}">
+                    <button class="btn-sm btn-edit" onclick="editSale(${s.id})">修改</button>
+                    <button class="btn-sm btn-del" onclick="del('sales', ${s.id})">刪除</button>
+                </div>
+            </div>`).join('');
+    }
+
+    function editBean(id) {
+        const b = db.beans.find(x => x.id == id);
+        const fields = ['id','origin','estate','process','flavor','cost','weight','expense','date'];
+        fields.forEach(f => document.getElementById('b_'+f).value = b[f] || "");
+        window.scrollTo(0,0);
+    }
+
+    function editRoast(id) {
+        const r = db.roasts.find(x => x.id == id);
+        const fields = ['id','batchNo','date','wIn','wOut','t_charge','t_tp','t_dry','m_dry','s_dry','t_fc','m_fc','s_fc','t_drop','m_drop','s_drop','m_dev','s_dev'];
+        fields.forEach(f => document.getElementById('r_'+f).value = r[f] || "");
+        document.getElementById('r_beanSelect').value = r.beanId;
+        window.scrollTo(0,0);
+    }
+
+    function editSale(id) {
+        const s = db.sales.find(x => x.id == id);
+        const fields = ['id','buyer','date','weight','price'];
+        fields.forEach(f => document.getElementById('s_'+f).value = s[f] || "");
+        document.getElementById('s_roastSelect').value = s.roastId;
+        window.scrollTo(0,0);
+    }
+
+    function del(type, id) { if(confirm('確定刪除？')) { db[type] = db[type].filter(x => x.id != id); localStorage.setItem('coffee_'+type, JSON.stringify(db[type])); location.reload(); } }
+
+    window.onload = () => {
+        const today = new Date().toISOString().split('T')[0];
+        ['b_date','r_date','s_date'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.value = today;
+        });
+        render();
+    };
+</script>
+</body>
+</html>
