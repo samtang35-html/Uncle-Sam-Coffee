@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uncle Sam Coffee Menu</title>
+    <title>Uncle Sam Coffee Menu (Live)</title>
+    <!-- 引入 Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         :root { --coffee-dark: #3E2723; --coffee-light: #6F4E37; --accent: #D4A373; --bg: #FAFAFA; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
         header { text-align: center; padding: 30px 0; }
         h1 { color: var(--coffee-dark); margin: 0; letter-spacing: 2px; font-size: 24px; }
         .subtitle { color: var(--coffee-light); font-size: 14px; margin-top: 5px; }
-        
-        /* 管理輸入區 */
         #admin-panel { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 30px; border: 1px dashed #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        
         .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .bean-card { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; }
         .bean-img { width: 100%; height: 220px; object-fit: cover; background: #eee; }
@@ -24,85 +24,135 @@
         .bean-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 12px; }
         .price { font-size: 18px; font-weight: bold; color: var(--coffee-light); }
         .buy-info { font-size: 12px; color: #888; border: 1px solid #ddd; padding: 4px 10px; border-radius: 15px; }
-        
         .btn-del { position: absolute; top: 10px; right: 10px; background: rgba(231, 76, 60, 0.8); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
         input, button.add-btn { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         button.add-btn { background: var(--coffee-light); color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
+        .loading { text-align: center; color: var(--coffee-light); font-weight: bold; padding: 20px; }
     </style>
 </head>
 <body>
 
     <header>
         <h1>UNCLE SAM ROASTER</h1>
-        <div class="subtitle">Coffee Bean Menu</div>
+        <div class="subtitle">精品咖啡豆實時目錄</div>
     </header>
 
     <div id="admin-panel">
-        <h3 style="margin-top:0">新增咖啡豆</h3>
+        <h3 style="margin-top:0">管理員：新增咖啡豆</h3>
         <input type="file" id="imgInput" accept="image/*">
         <input type="text" id="origin" placeholder="產地及處理法 (如: 埃塞俄比亞 日曬)">
         <input type="text" id="name" placeholder="豆名 (如: 74158)">
         <input type="text" id="flavor" placeholder="風味描述">
         <input type="text" id="price" placeholder="價錢 (如: $120 / 200g)">
-        <button class="add-btn" onclick="addItem()">上傳到目錄</button>
+        <button class="add-btn" id="saveBtn" onclick="addItem()">上傳到雲端目錄</button>
     </div>
 
+    <div id="loading" class="loading" style="display:none">上傳中，請稍候...</div>
     <div class="menu-grid" id="menuGrid"></div>
 
 <script>
-    let menuItems = JSON.parse(localStorage.getItem('coffee_menu_public') || '[]');
+    // Firebase 設定
+    const firebaseConfig = {
+        apiKey: "AIzaSyCeQkUUiXRT7FGM7C4o4GlWHNuCfxPwDAs",
+        authDomain: "unclesamcoffee-2b165.firebaseapp.com",
+        projectId: "unclesamcoffee-2b165",
+        storageBucket: "unclesamcoffee-2b165.firebasestorage.app",
+        databaseURL: "https://unclesamcoffee-2b165-default-rtdb.asia-southeast1.firebasedatabase.app",
+        messagingSenderId: "114173013966",
+        appId: "1:114173013966:web:9a477dc8d91bd364a3059f",
+        measurementId: "G-JM3K5MC7GE"
+    };
+
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const beansRef = db.ref('coffee_menu');
+
     let currentImgBase64 = "";
 
+    // 處理圖片轉 Base64
     document.getElementById('imgInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
+        if (file && file.size > 1024 * 1024) {
+            alert("圖片太大了，請選擇小於 1MB 的圖片");
+            e.target.value = "";
+            return;
+        }
         const reader = new FileReader();
         reader.onloadend = function() { currentImgBase64 = reader.result; }
         if (file) reader.readAsDataURL(file);
     });
 
+    // 新增資料到 Firebase
     function addItem() {
-        const item = {
+        const name = document.getElementById('name').value;
+        const price = document.getElementById('price').value;
+        const saveBtn = document.getElementById('saveBtn');
+        const loading = document.getElementById('loading');
+
+        if(!name || !price) return alert("請填寫豆名同價錢");
+
+        saveBtn.disabled = true;
+        loading.style.display = 'block';
+
+        const newItemRef = beansRef.push();
+        newItemRef.set({
             id: Date.now(),
             img: currentImgBase64,
             origin: document.getElementById('origin').value,
-            name: document.getElementById('name').value,
-            price: document.getElementById('price').value,
+            name: name,
+            price: price,
             flavor: document.getElementById('flavor').value
-        };
-        if(!item.name || !item.price) return alert("請填寫資料");
-        menuItems.unshift(item);
-        localStorage.setItem('coffee_menu_public', JSON.stringify(menuItems));
-        render();
-        document.querySelectorAll('#admin-panel input').forEach(i => i.value = "");
-        currentImgBase64 = "";
+        }, (error) => {
+            saveBtn.disabled = false;
+            loading.style.display = 'none';
+            if (error) {
+                alert("上傳失敗：" + error.message);
+            } else {
+                alert("成功上傳到雲端！");
+                document.querySelectorAll('#admin-panel input').forEach(i => i.value = "");
+                currentImgBase64 = "";
+            }
+        });
     }
 
-    function deleteItem(id) {
-        if(confirm('確定刪除？')) {
-            menuItems = menuItems.filter(i => i.id !== id);
-            localStorage.setItem('coffee_menu_public', JSON.stringify(menuItems));
-            render();
+    // 從 Firebase 刪除資料
+    function deleteItem(firebaseKey) {
+        if(confirm('確定要從雲端下架呢款豆？所有人都會睇唔到。')) {
+            db.ref('coffee_menu/' + firebaseKey).remove();
         }
     }
 
-    function render() {
-        document.getElementById('menuGrid').innerHTML = menuItems.map(item => `
-            <div class="bean-card">
-                <button class="btn-del" onclick="deleteItem(${item.id})">刪除</button>
-                <img src="${item.img || 'https://via.placeholder.com/300x200?text=Uncle+Sam+Roaster'}" class="bean-img">
-                <div class="bean-info">
-                    <div class="bean-origin">${item.origin}</div>
-                    <div class="bean-name">${item.name}</div>
-                    <div class="bean-flavor">${item.flavor}</div>
-                    <div class="bean-bottom">
-                        <div class="price">${item.price}</div>
-                        <div class="buy-info">請聯絡我購買</div>
+    // 監聽 Firebase 數據變化（即時更新畫面）
+    beansRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        const grid = document.getElementById('menuGrid');
+        let html = "";
+        
+        if (data) {
+            // 將物件轉成陣列並反轉，令最新嘅豆喺上面
+            const keys = Object.keys(data).reverse();
+            keys.forEach(key => {
+                const item = data[key];
+                html += `
+                    <div class="bean-card">
+                        <button class="btn-del" onclick="deleteItem('${key}')">刪除</button>
+                        <img src="${item.img || 'https://via.placeholder.com/300x200?text=Uncle+Sam+Roaster'}" class="bean-img">
+                        <div class="bean-info">
+                            <div class="bean-origin">${item.origin}</div>
+                            <div class="bean-name">${item.name}</div>
+                            <div class="bean-flavor">${item.flavor}</div>
+                            <div class="bean-bottom">
+                                <div class="price">${item.price}</div>
+                                <div class="buy-info">請聯絡我購買</div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        `).join('');
-    }
-    render();
+                `;
+            });
+        }
+        grid.innerHTML = html;
+    });
 </script>
 </body>
 </html>
