@@ -3,52 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uncle Sam Coffee Menu (Live)</title>
-    <!-- 引入 Firebase SDK -->
+    <title>Uncle Sam Roaster Division - Menu</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        :root { --coffee-dark: #3E2723; --coffee-light: #6F4E37; --accent: #D4A373; --bg: #FAFAFA; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
-        header { text-align: center; padding: 30px 0; }
-        h1 { color: var(--coffee-dark); margin: 0; letter-spacing: 2px; font-size: 24px; }
-        .subtitle { color: var(--coffee-light); font-size: 14px; margin-top: 5px; }
-        #admin-panel { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 30px; border: 1px dashed #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .bean-card { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; }
-        .bean-img { width: 100%; height: 220px; object-fit: cover; background: #eee; }
-        .bean-info { padding: 15px; }
-        .bean-origin { font-size: 12px; color: var(--accent); font-weight: bold; }
-        .bean-name { font-size: 18px; font-weight: bold; margin: 5px 0; color: var(--coffee-dark); }
-        .bean-flavor { font-size: 13px; color: #666; margin-bottom: 12px; min-height: 36px; }
-        .bean-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 12px; }
-        .price { font-size: 18px; font-weight: bold; color: var(--coffee-light); }
-        .buy-info { font-size: 12px; color: #888; border: 1px solid #ddd; padding: 4px 10px; border-radius: 15px; }
-        .btn-del { position: absolute; top: 10px; right: 10px; background: rgba(231, 76, 60, 0.8); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-        input, button.add-btn { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button.add-btn { background: var(--coffee-light); color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
-        .loading { text-align: center; color: var(--coffee-light); font-weight: bold; padding: 20px; }
+        :root { --coffee-dark: #3E2723; --coffee-light: #6F4E37; --accent: #D4A373; --bg: #FDFCFB; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; color: #333; }
+        
+        /* Logo Section */
+        header { text-align: center; padding: 40px 20px; background: white; border-bottom: 1px solid #eee; }
+        .logo-box { border: 2px solid var(--coffee-dark); display: inline-block; padding: 10px 20px; margin-bottom: 10px; }
+        .logo-text { font-size: 22px; font-weight: 900; letter-spacing: 3px; color: var(--coffee-dark); margin: 0; }
+        .brand-sub { font-size: 12px; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; }
+
+        /* Admin Styles */
+        #admin-panel { display: none; background: #fff; padding: 20px; border-radius: 12px; margin: 20px; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .admin-btn-trigger { text-align: center; padding: 40px 0; font-size: 12px; color: #ccc; cursor: pointer; }
+        
+        /* Grid and Cards */
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; }
+        .bean-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,0.06); transition: transform 0.2s; position: relative; }
+        .bean-card:hover { transform: translateY(-5px); }
+        .bean-img { width: 100%; height: 250px; object-fit: cover; background: #f0f0f0; }
+        .bean-info { padding: 20px; }
+        .bean-origin { font-size: 12px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+        .bean-name { font-size: 20px; font-weight: 800; margin: 8px 0; color: var(--coffee-dark); }
+        .bean-flavor { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 15px; min-height: 44px; }
+        .bean-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f0f0f0; padding-top: 15px; }
+        .price { font-size: 18px; font-weight: 700; color: var(--coffee-light); }
+        
+        /* Form Elements */
+        input, button.main-btn { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+        button.main-btn { background: var(--coffee-dark); color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button.main-btn:hover { background: #1a0f0d; }
+        .btn-del { display: none; position: absolute; top: 10px; right: 10px; background: rgba(231, 76, 60, 0.9); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; z-index: 5; }
+        .loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 100; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>UNCLE SAM ROASTER</h1>
-        <div class="subtitle">精品咖啡豆實時目錄</div>
+        <div class="logo-box">
+            <h1 class="logo-text">UNCLE SAM</h1>
+        </div>
+        <div class="brand-sub">Roaster Division</div>
     </header>
 
-    <div id="admin-panel">
-        <h3 style="margin-top:0">管理員：新增咖啡豆</h3>
-        <input type="file" id="imgInput" accept="image/*">
-        <input type="text" id="origin" placeholder="產地及處理法 (如: 埃塞俄比亞 日曬)">
-        <input type="text" id="name" placeholder="豆名 (如: 74158)">
-        <input type="text" id="flavor" placeholder="風味描述">
-        <input type="text" id="price" placeholder="價錢 (如: $120 / 200g)">
-        <button class="add-btn" id="saveBtn" onclick="addItem()">上傳到雲端目錄</button>
+    <div class="container">
+        <!-- 管理員後台面板 -->
+        <div id="admin-panel">
+            <h2 style="text-align:center; color: var(--coffee-dark);">後台管理系統</h2>
+            <p style="font-size:13px; color:#888;">選擇相片 (建議 1MB 以下)：</p>
+            <input type="file" id="imgInput" accept="image/*">
+            <input type="text" id="origin" placeholder="產地及處理法">
+            <input type="text" id="name" placeholder="豆名 (必填)">
+            <input type="text" id="flavor" placeholder="風味描述">
+            <input type="text" id="price" placeholder="價錢 (必填，如: $120 / 200g)">
+            <button class="main-btn" id="saveBtn" onclick="addItem()">發佈到雲端目錄</button>
+            <button class="main-btn" style="background:#888;" onclick="toggleAdmin()">退出管理員模式</button>
+        </div>
+
+        <div class="menu-grid" id="menuGrid"></div>
     </div>
 
-    <div id="loading" class="loading" style="display:none">上傳中，請稍候...</div>
-    <div class="menu-grid" id="menuGrid"></div>
+    <!-- 頁尾登入入口 -->
+    <div class="admin-btn-trigger" id="adminTrigger" onclick="checkAuth()">— 管理員登入 —</div>
+
+    <div id="loading" class="loading">正在處理同步中...</div>
 
 <script>
     // Firebase 設定
@@ -63,18 +85,48 @@
         measurementId: "G-JM3K5MC7GE"
     };
 
-    // 初始化 Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const beansRef = db.ref('coffee_menu');
-
+    let isAdmin = false;
     let currentImgBase64 = "";
 
-    // 處理圖片轉 Base64
+    // 密碼檢查 (預設密碼: 1234)
+    function checkAuth() {
+        const password = prompt("請輸入管理員密碼：");
+        if (password === "1234") {
+            isAdmin = true;
+            toggleAdmin();
+            renderAdminTools();
+        } else {
+            alert("密碼錯誤！");
+        }
+    }
+
+    function toggleAdmin() {
+        const panel = document.getElementById('admin-panel');
+        const trigger = document.getElementById('adminTrigger');
+        if (isAdmin) {
+            panel.style.display = 'block';
+            trigger.style.display = 'none';
+            window.scrollTo(0,0);
+        } else {
+            panel.style.display = 'none';
+            trigger.style.display = 'block';
+        }
+        renderAdminTools();
+    }
+
+    function renderAdminTools() {
+        const btns = document.querySelectorAll('.btn-del');
+        btns.forEach(b => b.style.display = isAdmin ? 'block' : 'none');
+    }
+
+    // 圖片壓縮及處理
     document.getElementById('imgInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
-        if (file && file.size > 1024 * 1024) {
-            alert("圖片太大了，請選擇小於 1MB 的圖片");
+        if (file && file.size > 2 * 1024 * 1024) {
+            alert("圖片過大，請選取較小的檔案。");
             e.target.value = "";
             return;
         }
@@ -83,75 +135,63 @@
         if (file) reader.readAsDataURL(file);
     });
 
-    // 新增資料到 Firebase
     function addItem() {
         const name = document.getElementById('name').value;
         const price = document.getElementById('price').value;
-        const saveBtn = document.getElementById('saveBtn');
-        const loading = document.getElementById('loading');
+        if(!name || !price) return alert("豆名與價錢為必填項。");
 
-        if(!name || !price) return alert("請填寫豆名同價錢");
-
-        saveBtn.disabled = true;
-        loading.style.display = 'block';
-
-        const newItemRef = beansRef.push();
-        newItemRef.set({
-            id: Date.now(),
+        document.getElementById('loading').style.display = 'block';
+        
+        beansRef.push().set({
             img: currentImgBase64,
             origin: document.getElementById('origin').value,
             name: name,
             price: price,
-            flavor: document.getElementById('flavor').value
+            flavor: document.getElementById('flavor').value,
+            timestamp: Date.now()
         }, (error) => {
-            saveBtn.disabled = false;
-            loading.style.display = 'none';
-            if (error) {
-                alert("上傳失敗：" + error.message);
-            } else {
-                alert("成功上傳到雲端！");
+            document.getElementById('loading').style.display = 'none';
+            if (error) alert("上傳失敗");
+            else {
+                alert("已成功發佈！");
                 document.querySelectorAll('#admin-panel input').forEach(i => i.value = "");
                 currentImgBase64 = "";
             }
         });
     }
 
-    // 從 Firebase 刪除資料
-    function deleteItem(firebaseKey) {
-        if(confirm('確定要從雲端下架呢款豆？所有人都會睇唔到。')) {
-            db.ref('coffee_menu/' + firebaseKey).remove();
+    function deleteItem(key) {
+        if(confirm('確定要永久刪除此項目嗎？')) {
+            db.ref('coffee_menu/' + key).remove();
         }
     }
 
-    // 監聽 Firebase 數據變化（即時更新畫面）
+    // 監聽雲端數據
     beansRef.on('value', (snapshot) => {
         const data = snapshot.val();
         const grid = document.getElementById('menuGrid');
-        let html = "";
+        grid.innerHTML = "";
         
         if (data) {
-            // 將物件轉成陣列並反轉，令最新嘅豆喺上面
-            const keys = Object.keys(data).reverse();
-            keys.forEach(key => {
+            Object.keys(data).reverse().forEach(key => {
                 const item = data[key];
-                html += `
-                    <div class="bean-card">
-                        <button class="btn-del" onclick="deleteItem('${key}')">刪除</button>
-                        <img src="${item.img || 'https://via.placeholder.com/300x200?text=Uncle+Sam+Roaster'}" class="bean-img">
-                        <div class="bean-info">
-                            <div class="bean-origin">${item.origin}</div>
-                            <div class="bean-name">${item.name}</div>
-                            <div class="bean-flavor">${item.flavor}</div>
-                            <div class="bean-bottom">
-                                <div class="price">${item.price}</div>
-                                <div class="buy-info">請聯絡我購買</div>
-                            </div>
+                const card = document.createElement('div');
+                card.className = 'bean-card';
+                card.innerHTML = `
+                    <button class="btn-del" style="display:${isAdmin ? 'block' : 'none'}" onclick="deleteItem('${key}')">刪除</button>
+                    <img src="${item.img || 'https://via.placeholder.com/400x300?text=Uncle+Sam+Coffee'}" class="bean-img">
+                    <div class="bean-info">
+                        <div class="bean-origin">${item.origin || 'ORIGIN'}</div>
+                        <div class="bean-name">${item.name}</div>
+                        <div class="bean-flavor">${item.flavor || '精選烘焙風味'}</div>
+                        <div class="bean-bottom">
+                            <div class="price">${item.price}</div>
                         </div>
                     </div>
                 `;
+                grid.appendChild(card);
             });
         }
-        grid.innerHTML = html;
     });
 </script>
 </body>
